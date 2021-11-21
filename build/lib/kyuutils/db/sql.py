@@ -44,7 +44,7 @@ class SQL:
         with self as active:
             return active.insert(table, values, **kwargs)
         
-    def delete_eq(self, table, conditions=None, **kwargs):
+    def delete(self, table, conditions=None, **kwargs):
         with self as active:
             return active.delete(table, conditions, **kwargs)
                   

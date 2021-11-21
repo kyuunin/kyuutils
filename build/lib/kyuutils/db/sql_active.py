@@ -1,4 +1,3 @@
-from ..errors import throw, Unknown_Table_Exception, Unknown_Columns_Exception
 class SQL_active:
 
     def __init__(self, sql, cursor):
@@ -26,8 +25,8 @@ class SQL_active:
     def insert(self, table, values=None, **kwargs):
         if values is None:
             values = kwargs
-        assert self._check_table(table)
-        assert self._check_columns(table,values)
+        assert table in self.tbl_data
+        assert all(c in self.tbl_data[table] for c in values.keys())
         
         return self.run(
             f"INSERT `{table}` ({', '.join(map(_quote,values.keys()))}) VALUES ({', '.join(map(_escape,values.keys()))});",
@@ -37,8 +36,8 @@ class SQL_active:
     def delete(self, table, conditions=None, **kwargs):
         if conditions is None:
             conditions = kwargs
-        assert self._check_table(table)
-        assert self._check_columns(table,conditions)
+        assert table in self.tbl_data
+        assert all(c in self.tbl_data[table] for c in conditions.keys())
         
         return self.run(
             f"DELETE FROM `{table}` WHERE {_and_eqs(conditions)};",
@@ -51,9 +50,9 @@ class SQL_active:
             conditions = kwargs
         elif values is None:
             values = kwargs
-        assert self._check_table(table)
-        assert self._check_columns(table,values)
-        assert self._check_columns(table,conditions)
+        assert table in self.tbl_data
+        assert all(c in self.tbl_data[table] for c in values.keys())
+        assert all(c in self.tbl_data[table] for c in conditions.keys())
         
         return self.run(
             f"UPDATE `{table}` SET {_listing(values)} WHERE {_and_eqs(conditions)} ",
@@ -63,9 +62,8 @@ class SQL_active:
     def insert_update(self, table, values=None, **kwargs):
         if values is None:
             values = kwargs
-        assert self._check_table(table)
-        assert self._check_columns(table,values)
-        
+        assert table in self.tbl_data
+        assert all(c in self.tbl_data[table] for c in values.keys())
         return self.run(
             f"INSERT `{table}` ({', '.join(map(_quote,values.keys()))}) VALUES ({', '.join(map(_escape,values.keys()))})" + 
             f" ON DUPLICATE KEY UPDATE {_listing(values)};",
@@ -80,7 +78,7 @@ class SQL_active:
         
     def select_all(self,  table, start=0, num=100, as_type=list):
         #TODO custom assert
-        assert self._check_table(table)
+        assert table in self.tbl_data
         assert type(start) is int
         assert type(num) is int
          
@@ -93,10 +91,10 @@ class SQL_active:
         if conditions is None:
             conditions = kwargs
         #TODO custom assert
-        assert self._check_table(table)
+        assert table in self.tbl_data
         assert type(start) is int
         assert type(num) is int
-        assert self._check_columns(table,conditions)
+        assert all(c in self.tbl_data[table] for c in conditions.keys())
         
         return self.select(
             f"SELECT * FROM `{table}` WHERE {_and_eqs(conditions)} limit {start},{num};",
@@ -106,14 +104,6 @@ class SQL_active:
     
     def _to_dict(self, item):
         return dict(zip(self.cursor.column_names,item))
-        
-    def _check_table(self, table):
-        return table in self.tbl_data or throw(Unknown_Table_Exception(table))
-         
-    def _check_columns(self,table,columns):
-        if all(c in self.tbl_data[table] for c in columns.keys()):
-            return True 
-        raise Unknown_Columns_Exception([c for c in columns.keys() if c not in self.tbl_data[table]])
     
 ##########
 # Helper #
